@@ -59,7 +59,7 @@ paddle_2_movement_up:
 	mov [paddle_2_y], eax 
 
 paddle_2_movement_down:	
-	mov rdi, 264
+	mov rdi, 264 
 	call IsKeyDown
 	and rax, 1 
 	jz ballmovement
