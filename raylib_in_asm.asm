@@ -1,7 +1,9 @@
 global main
 	extern InitWindow
 	extern SetTargetFPS
+	extern DrawCircle
 	extern WindowShouldClose
+	extern ClearBackground
 	extern CloseWindow
 	extern BeginDrawing
 	extern EndDrawing
@@ -23,10 +25,18 @@ main:
 
 logic:
 
-
-
-
 	call BeginDrawing
+
+	mov rdi, 0xFF000000
+	call ClearBackground
+
+	; Draw the ball 
+	mov rdx, 0xFF00FFFF
+	movss xmm0, [ball_size]
+	mov rsi, [ball_y] 
+	mov rdi, [ball_x]
+	call DrawCircle
+	
 	call EndDrawing
 
 gameloop:
@@ -47,5 +57,7 @@ exit:
 	syscall
 
 section .data 
-
 	window_title db "Pong asm"
+	ball_size dd 10.0
+	ball_x dd 250 
+	ball_y dd 250
