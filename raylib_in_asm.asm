@@ -7,6 +7,7 @@ global main
 	extern CloseWindow
 	extern BeginDrawing
 	extern EndDrawing
+	extern GetScreenHeight
 main:
 	; epilouge  
 	push rbp 
@@ -25,6 +26,33 @@ main:
 
 logic:
 
+	mov eax, [ball_y]
+	add eax, [ball_vel_y]
+	mov [ball_y], eax 
+
+	mov eax, [ball_y]
+	cmp eax, 0 
+	jge checkballlower  
+
+	mov eax, 0 
+	mov [ball_y], eax
+	mov eax, [ball_vel_y]
+	imul eax, -1 
+	mov [ball_vel_y], eax
+
+checkballlower:
+	call GetScreenHeight
+	mov ebx, eax 
+	mov eax, [ball_y]
+	cmp eax, ebx 
+	jle drawing
+
+	mov [ball_y], ebx 
+	mov eax, [ball_vel_y]
+	imul eax, -1 
+	mov [ball_vel_y], eax
+
+drawing:
 	call BeginDrawing
 
 	mov rdi, 0xFF000000
@@ -57,7 +85,8 @@ exit:
 	syscall
 
 section .data 
-	window_title db "Pong asm"
+	window_title db "Pong asm", 0x00
 	ball_size dd 10.0
 	ball_x dd 250 
 	ball_y dd 250
+	ball_vel_y dd -5 
