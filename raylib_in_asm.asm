@@ -1,15 +1,16 @@
 global main
-	extern InitWindow
+	extern IsKeyDown
+	extern GetScreenHeight
+	extern GetScreenWidth
 	extern SetTargetFPS
-	extern DrawCircle
+	extern InitWindow
 	extern WindowShouldClose
-	extern ClearBackground
 	extern CloseWindow
 	extern BeginDrawing
+	extern ClearBackground
 	extern EndDrawing
-	extern GetScreenHeight
+	extern DrawCircle
 	extern DrawRectangle
-	extern IsKeyDown
 main:
 	; epilouge  
 	push rbp 
@@ -25,6 +26,19 @@ main:
 	call SetTargetFPS
 	
 	jmp gameloop
+
+reset:
+	mov ecx, 0
+	call GetScreenHeight
+	mov ecx, 2 
+	mov edx, 0
+	div ecx 
+
+	mov [paddle_1_y], eax 
+	mov [paddle_2_y], eax 
+
+	mov [ball_y], eax 
+	mov dword [ball_x], 300 
 
 logic:
 
@@ -62,10 +76,40 @@ paddle_2_movement_down:
 	mov rdi, 264 
 	call IsKeyDown
 	and rax, 1 
-	jz ballmovement
+	jz paddle_1_bound_up
 
 	mov eax, [paddle_2_y]
 	add eax, 5 
+	mov [paddle_2_y], eax 
+
+paddle_1_bound_up:
+	mov ebx, [paddle_1_y]
+	cmp ebx, 0 
+	jg paddle_1_bound_down 
+ 
+	mov dword [paddle_1_y], 0 
+
+paddle_1_bound_down:
+	call GetScreenHeight
+	sub eax, [paddle_height]
+	cmp ebx, eax 
+	jl paddle_2_bound_up
+
+	mov [paddle_1_y], eax 
+
+paddle_2_bound_up:
+	mov ebx, [paddle_2_y]
+	cmp ebx, 0 
+	jg paddle_2_bound_down 
+ 
+	mov dword [paddle_2_y], 0 
+
+paddle_2_bound_down:
+	call GetScreenHeight
+	sub eax, [paddle_height]
+	cmp ebx, eax 
+	jl ballmovement 
+
 	mov [paddle_2_y], eax 
 
 ballmovement:
@@ -93,12 +137,21 @@ checkballlower:
 	mov ebx, eax 
 	mov eax, [ball_y]
 	cmp eax, ebx 
-	jle checkcolpaddle1
+	jle check_ball_left_right
 
 	mov [ball_y], ebx 
 	mov eax, [ball_vel_y]
 	imul eax, -1 
 	mov [ball_vel_y], eax
+
+check_ball_left_right: 
+	mov ebx, [ball_x]
+	cmp ebx, 0 
+	jl reset 
+
+	call GetScreenWidth
+	cmp ebx, eax 
+	jg reset
 
 checkcolpaddle1: 
 
