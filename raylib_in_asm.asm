@@ -1,4 +1,8 @@
+	; Todo : Structure code for less repition 
+
+
 global main
+	extern sprintf
 	extern IsKeyDown
 	extern GetScreenHeight
 	extern GetScreenWidth
@@ -11,12 +15,14 @@ global main
 	extern EndDrawing
 	extern DrawCircle
 	extern DrawRectangle
+	extern DrawText
 main:
 	; epilouge  
 	push rbp 
 	mov rbp, rsp 
 	sub rsp, 16
-	
+
+	; create a window 
 	mov rdx, window_title 
 	mov rsi, 700  
 	mov rdi, 700
@@ -24,25 +30,56 @@ main:
 
 	mov rdi, 60 
 	call SetTargetFPS
-	
-	jmp gameloop
+	; set initial game state 
+	jmp reset
+
+inc_score_1:
+	mov eax, [score_1]
+	add eax, 1
+	mov [score_1], eax
+	jmp reset
+
+inc_score_2:
+	mov eax, [score_2]
+	add eax, 1 
+	mov [score_2], eax
 
 reset:
+	; reset everything to initial state 
+	mov eax, [paddle_height]
+	mov ecx, 2 
+	mov edx, 0 
+	div ecx 
+	mov ebx, eax
+
 	mov ecx, 0
 	call GetScreenHeight
 	mov ecx, 2 
 	mov edx, 0
 	div ecx 
 
+	sub eax, ebx 
+
 	mov [paddle_1_y], eax 
 	mov [paddle_2_y], eax 
 
-	mov [ball_y], eax 
-	mov dword [ball_x], 300 
+	mov dword [ball_vel_y], 0
+
+	add eax, ebx 
+	mov [ball_y], eax
+
+	call GetScreenWidth
+	mov ecx, 2 
+	mov edx, 0 
+	div ecx 
+
+	mov dword [ball_x], eax
 
 logic:
+	; just a useless label :)
 
 paddle_1_movement_up:
+	; 87 is keycode for W 
 	mov rdi, 87 
 	call IsKeyDown
 	and rax, 1 
@@ -53,6 +90,7 @@ paddle_1_movement_up:
 	mov [paddle_1_y], eax 
 
 paddle_1_movement_down:	
+	; 83 is keycode for S 
 	mov rdi, 83 
 	call IsKeyDown
 	and rax, 1 
@@ -63,6 +101,7 @@ paddle_1_movement_down:
 	mov [paddle_1_y], eax 
 
 paddle_2_movement_up:
+	; 265 is key code for up key 
 	mov rdi, 265 
 	call IsKeyDown
 	and rax, 1 
@@ -73,6 +112,7 @@ paddle_2_movement_up:
 	mov [paddle_2_y], eax 
 
 paddle_2_movement_down:	
+	; 264 is keycode for down key 
 	mov rdi, 264 
 	call IsKeyDown
 	and rax, 1 
@@ -82,6 +122,7 @@ paddle_2_movement_down:
 	add eax, 5 
 	mov [paddle_2_y], eax 
 
+; Limit the paddles to screen only 
 paddle_1_bound_up:
 	mov ebx, [paddle_1_y]
 	cmp ebx, 0 
@@ -125,6 +166,7 @@ ballmovement:
 	cmp eax, 0 
 	jge checkballlower  
 
+; reverse Y-velocity when ball hits the top or bottom of screen 
 checkballupper:
 	mov eax, 0 
 	mov [ball_y], eax
@@ -144,52 +186,81 @@ checkballlower:
 	imul eax, -1 
 	mov [ball_vel_y], eax
 
+; reset and increment score if ball goes out of bound on x axis 
 check_ball_left_right: 
 	mov ebx, [ball_x]
 	cmp ebx, 0 
-	jl reset 
+	jl inc_score_2
 
 	call GetScreenWidth
 	cmp ebx, eax 
-	jg reset
+	jg inc_score_1
 
+; paddle collision code 
 checkcolpaddle1: 
 
+	; if !(ball_x >= paddle_x) 
 	mov eax, [paddle_1_x]
 	mov ebx, [ball_x]
-
 	cmp eax, ebx 
 	jg checkcolpaddle2
-
+	
+	; if !(ball_x <= paddle_x + paddle_width) 
 	add eax, [paddle_width]
 	cmp eax, ebx 
 	jl checkcolpaddle2
 
+	; if !(ball_y >= paddle_y) 
 	mov eax, [paddle_1_y]
 	mov ebx, [ball_y]
 	cmp eax, ebx
 	jg checkcolpaddle2 
 
+	; if !(ball_y <= paddle_y + paddle_height) 
 	add eax, [paddle_height]
 	cmp eax, ebx 
 	jl checkcolpaddle2 
 
+	; preserve paddle_y + paddle_height which is stored in eax in ebx 
+	mov ebx, eax 
+	; paddle_height / 2 
+	mov eax, [paddle_height]
+	mov ecx, 2
+	mov edx, 0
+	div ecx
+	; basically : paddle_y + paddle_height / 2 
+	sub ebx, eax
+	
+	; basically : ((paddle_y + paddle_height / 2 ) - ball_y) / 10
+	; The farther away the ball from the center of the paddle 
+	; the more y_velocity it shall have  
+	mov eax, [ball_y]
+	sub eax, ebx 
+	; https://stackoverflow.com/questions/51717317/dividing-with-a-negative-number-gives-me-an-overflow-in-nasm
+	cdq
+	mov ebx, 10 
+	idiv ebx 
+
+	mov [ball_vel_y], eax 
+
 	mov eax, [ball_vel_x]
 	imul eax, -1 
-	mov [ball_vel_x], eax
+	mov [ball_vel_x], eax 
 
 checkcolpaddle2: 
-
 	mov eax, [paddle_2_x]
 	mov ebx, [ball_x]
 
+	; if !(paddle_x < ball_x)
 	cmp eax, ebx 
 	jg drawing
 
+	; if !(paddle_x + paddle_width > ball_x)
 	add eax, [paddle_width]
 	cmp eax, ebx 
 	jl drawing
 
+	; same as paddle_1 collision from here 
 	mov eax, [paddle_2_y]
 	mov ebx, [ball_y]
 	cmp eax, ebx
@@ -198,6 +269,21 @@ checkcolpaddle2:
 	add eax, [paddle_height]
 	cmp eax, ebx 
 	jl drawing 
+
+	mov ebx, eax 
+	mov eax, [paddle_height]
+	mov ecx, 2
+	mov edx, 0
+	div ecx
+
+	sub ebx, eax
+	mov eax, [ball_y]
+	sub eax, ebx 
+	cdq
+	mov ebx, 10 
+	idiv ebx 
+
+	mov [ball_vel_y], eax
 
 	mov eax, [ball_vel_x]
 	imul eax, -1 
@@ -231,9 +317,39 @@ drawing:
 	mov rdi, [paddle_2_x]
 	call DrawRectangle
 
+
+	; Draw score 
+	mov edx, [score_2]
+	mov rsi, format_str
+	mov rdi, score_buffer
+	call sprintf
+
+	call GetScreenWidth
+	sub rax, 200 
+
+	mov r8, 0xffdccd00
+	mov rcx, 20 
+	mov rdx, 20
+	mov rsi, rax
+	mov rdi, score_buffer
+	call DrawText
+
+	mov edx, [score_1]
+	mov rsi, format_str
+	mov rdi, score_buffer
+	call sprintf
+
+	mov r8, 0xffdccd00
+	mov rcx, 20 
+	mov rdx, 20 
+	mov rsi, 200 
+	mov rdi, score_buffer
+	call DrawText
+
 	call EndDrawing
 
 gameloop:
+	; if !(WindowShouldClose()) then go to logic else continue to prolouge then exit 
 	call WindowShouldClose
 	cmp rax, 1
 	jnz logic
@@ -251,17 +367,23 @@ exit:
 	syscall
 
 section .data 
+	format_str db "%d", 0x0a, 0x00
 	window_title db "Pong asm", 0x00
 	ball_size dd 10.0
 	ball_x dd 310 
 	ball_y dd 310
-	ball_vel_y dd -5
+	ball_vel_y dd 0
 	ball_vel_x dd -3
 
 	paddle_1_x dd 10  
-	paddle_2_x dd 680  
 	paddle_1_y dd 300  
+	paddle_2_x dd 680  
 	paddle_2_y dd 300
 
-	paddle_height dd 50 
+	score_1 dd 0 
+	score_2 dd 0
+	score_buffer dd 4
+
+	paddle_height dd 100 
 	paddle_width dd 10
+
