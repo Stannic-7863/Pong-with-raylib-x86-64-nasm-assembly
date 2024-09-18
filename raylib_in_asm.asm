@@ -199,9 +199,13 @@ check_ball_left_right:
 ; paddle collision code 
 checkcolpaddle1: 
 
+	movss xmm0, [ball_size]
+	cvttss2si ecx, xmm0
+
 	; if !(ball_x >= paddle_x) 
 	mov eax, [paddle_1_x]
 	mov ebx, [ball_x]
+	sub ebx, ecx 
 	cmp eax, ebx 
 	jg checkcolpaddle2
 	
@@ -213,11 +217,14 @@ checkcolpaddle1:
 	; if !(ball_y >= paddle_y) 
 	mov eax, [paddle_1_y]
 	mov ebx, [ball_y]
-	cmp eax, ebx
+	mov edx, ebx 
+	add edx, ecx 
+	cmp eax, edx
 	jg checkcolpaddle2 
 
 	; if !(ball_y <= paddle_y + paddle_height) 
 	add eax, [paddle_height]
+	sub ebx, ecx
 	cmp eax, ebx 
 	jl checkcolpaddle2 
 
@@ -245,13 +252,19 @@ checkcolpaddle1:
 
 	mov eax, [ball_vel_x]
 	imul eax, -1 
-	mov [ball_vel_x], eax 
+	mov [ball_vel_x], eax
+	; if collision jump to drawing since you can't be colliding with two paddles at the same time
+	jmp drawing
 
-checkcolpaddle2: 
-	mov eax, [paddle_2_x]
-	mov ebx, [ball_x]
+checkcolpaddle2:
+
+	movss xmm0, [ball_size]
+	cvttss2si ecx, xmm0
 
 	; if !(paddle_x < ball_x)
+	mov eax, [paddle_2_x]
+	mov ebx, [ball_x]
+	add ebx, ecx 
 	cmp eax, ebx 
 	jg drawing
 
@@ -263,10 +276,13 @@ checkcolpaddle2:
 	; same as paddle_1 collision from here 
 	mov eax, [paddle_2_y]
 	mov ebx, [ball_y]
-	cmp eax, ebx
+	mov edx, ebx 
+	add edx, ecx 
+	cmp eax, edx
 	jg drawing 
 
 	add eax, [paddle_height]
+	sub ebx, ecx
 	cmp eax, ebx 
 	jl drawing 
 
@@ -369,7 +385,7 @@ exit:
 section .data 
 	format_str db "%d", 0x0a, 0x00
 	window_title db "Pong asm", 0x00
-	ball_size dd 10.0
+	ball_size dd 30.0
 	ball_x dd 310 
 	ball_y dd 310
 	ball_vel_y dd 0
