@@ -46,17 +46,11 @@ inc_score_2:
 
 reset:
 	; reset everything to initial state 
-	mov eax, [paddle_height]
-	mov ecx, 2 
-	mov edx, 0 
-	div ecx 
-	mov ebx, eax
+	mov ebx, [paddle_height]
+	shr ebx, 1
 
-	mov ecx, 0
 	call GetScreenHeight
-	mov ecx, 2 
-	mov edx, 0
-	div ecx 
+	shr eax, 1 
 
 	sub eax, ebx 
 
@@ -69,9 +63,7 @@ reset:
 	mov [ball_y], eax
 
 	call GetScreenWidth
-	mov ecx, 2 
-	mov edx, 0 
-	div ecx 
+	shr eax, 1
 
 	mov dword [ball_x], eax
 
@@ -205,7 +197,6 @@ checkcolpaddle1:
 	; if !(ball_x >= paddle_x) 
 	mov eax, [paddle_1_x]
 	mov ebx, [ball_x]
-	sub ebx, ecx 
 	cmp eax, ebx 
 	jg checkcolpaddle2
 	
@@ -214,7 +205,7 @@ checkcolpaddle1:
 	cmp eax, ebx 
 	jl checkcolpaddle2
 
-	; if !(ball_y >= paddle_y) 
+	; if !(ball_y + offset >= paddle_y) 
 	mov eax, [paddle_1_y]
 	mov ebx, [ball_y]
 	mov edx, ebx 
@@ -222,30 +213,24 @@ checkcolpaddle1:
 	cmp eax, edx
 	jg checkcolpaddle2 
 
-	; if !(ball_y <= paddle_y + paddle_height) 
-	add eax, [paddle_height]
+	; if !(ball_y - offset <= paddle_y + paddle_height) 
+	mov edx, [paddle_height]
+	add eax, edx
 	sub ebx, ecx
 	cmp eax, ebx 
 	jl checkcolpaddle2 
 
-	; preserve paddle_y + paddle_height which is stored in eax in ebx 
-	mov ebx, eax 
-	; paddle_height / 2 
-	mov eax, [paddle_height]
-	mov ecx, 2
-	mov edx, 0
-	div ecx
+	shr edx, 1
 	; basically : paddle_y + paddle_height / 2 
-	sub ebx, eax
-	
+	sub eax, edx
+	add ebx, ecx 	
 	; basically : ((paddle_y + paddle_height / 2 ) - ball_y) / 10
 	; The farther away the ball from the center of the paddle 
 	; the more y_velocity it shall have  
-	mov eax, [ball_y]
 	sub eax, ebx 
 	; https://stackoverflow.com/questions/51717317/dividing-with-a-negative-number-gives-me-an-overflow-in-nasm
 	cdq
-	mov ebx, 10 
+	mov ebx, -10 
 	idiv ebx 
 
 	mov [ball_vel_y], eax 
@@ -264,7 +249,6 @@ checkcolpaddle2:
 	; if !(paddle_x < ball_x)
 	mov eax, [paddle_2_x]
 	mov ebx, [ball_x]
-	add ebx, ecx 
 	cmp eax, ebx 
 	jg drawing
 
@@ -273,7 +257,6 @@ checkcolpaddle2:
 	cmp eax, ebx 
 	jl drawing
 
-	; same as paddle_1 collision from here 
 	mov eax, [paddle_2_y]
 	mov ebx, [ball_y]
 	mov edx, ebx 
@@ -281,26 +264,20 @@ checkcolpaddle2:
 	cmp eax, edx
 	jg drawing 
 
-	add eax, [paddle_height]
+	mov edx, [paddle_height]
+	add eax, edx
 	sub ebx, ecx
 	cmp eax, ebx 
 	jl drawing 
 
-	mov ebx, eax 
-	mov eax, [paddle_height]
-	mov ecx, 2
-	mov edx, 0
-	div ecx
-
-	sub ebx, eax
-	mov eax, [ball_y]
+	shr edx, 1
+	sub eax, edx
+	add ebx, ecx 	
 	sub eax, ebx 
 	cdq
-	mov ebx, 10 
+	mov ebx, -10 
 	idiv ebx 
-
-	mov [ball_vel_y], eax
-
+	mov [ball_vel_y], eax 
 	mov eax, [ball_vel_x]
 	imul eax, -1 
 	mov [ball_vel_x], eax
@@ -385,7 +362,7 @@ exit:
 section .data 
 	format_str db "%d", 0x0a, 0x00
 	window_title db "Pong asm", 0x00
-	ball_size dd 30.0
+	ball_size dd 10.0
 	ball_x dd 310 
 	ball_y dd 310
 	ball_vel_y dd 0
